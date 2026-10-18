@@ -461,11 +461,49 @@ function person(c,x,y,hr,sk,t){var k=c.col,idl=Math.floor(hsh(c.id.length*7+c.id
  rc(x-6,y+22,12,2,"rgba(255,255,255,.28)");rc(x-1,y+24,2,2,"rgba(255,255,255,.4)");for(i=0;i<3;i++)rc(x,y+30+i*8,1,1,"rgba(0,0,0,.45)");
  rc(x-12,y+36,7,6,"rgba(0,0,0,.18)");rc(x-12,y+36,7,1,"rgba(255,255,255,.15)");rc(x+5,y+36,7,6,"rgba(0,0,0,.18)");rc(x+5,y+36,7,1,"rgba(255,255,255,.15)");rc(x-15,y+56,30,6,"rgba(0,0,0,.28)");
  }
-function arm(px,hx,hy){var bx=px+(px<160?-25:25),s,x,y;for(s=0;s<=1;s+=.04){x=bx+(hx-bx)*s-5;y=180+(hy-180)*s-3;rc(x,y,11,9,'#2f3a6a');rc(x,y,2,9,'rgba(255,255,255,.12)');rc(x+9,y,2,9,'rgba(0,0,0,.25)')}}
+// Cada manga tem seu próprio estado (0 = abaixada, 1 = levantada).
+var sleeveL=0,sleeveR=0,sleeveLTarget=0,sleeveRTarget=0,sleeveAnimT=0;
+function arm(px,hx,hy){
+ var bx=px+(px<160?-25:25),right=hx>160,progress=right?sleeveR:sleeveL;
+ var dx=hx-bx,dy=hy-180,len=Math.sqrt(dx*dx+dy*dy)||1;
+ // Antebraço e mão ficam por baixo da manga.
+ for(var s=0;s<=1;s+=.025){var x=bx+dx*s-4,y=180+dy*s-4;rc(x,y,9,9,'#c99570');rc(x,y,1,9,'rgba(255,235,200,.18)');}
+ // A borda da manga recua pelo braço, em vez de simplesmente desaparecer.
+ var cuff=.98-progress*.53;
+ for(s=0;s<=cuff;s+=.025){x=bx+dx*s-6;y=180+dy*s-5;rc(x,y,13,10,'#303b68');rc(x,y,2,10,'rgba(255,255,255,.13)');rc(x+11,y,2,10,'rgba(0,0,0,.22)');}
+ // Punho da manga: pequeno vinco claro na borda móvel.
+ var cx=bx+dx*cuff,cy=180+dy*cuff;
+ rc(cx-6,cy-5,13,2,'#56638a');rc(cx-5,cy-3,11,1,'rgba(10,13,30,.65)');
+ // Relógio pequeno em pixel art, encaixado no pulso direito.
+ // A pulseira acompanha o eixo diagonal do antebraço e o mostrador fica sobre o pulso.
+ if(right&&progress>.12){
+   var reveal=Math.min(1,(progress-.12)/.55),wx=hx-2,wy=hy-5;
+   g.save();g.globalAlpha=reveal;
+   // Pulseira curta, estreita e parcialmente escondida sob o mostrador.
+   rc(wx-1,wy-5,3,3,'#25252b');rc(wx-2,wy-4,1,2,'#b5a06d');
+   rc(wx-1,wy+3,3,3,'#25252b');rc(wx-2,wy+3,1,2,'#b5a06d');
+   // Aro redondo pixelado (degraus de pixels, sem círculo vetorial liso).
+   rc(wx-1,wy-3,3,1,'#d4bd82');
+   rc(wx-3,wy-2,1,3,'#d4bd82');rc(wx+2,wy-2,1,3,'#d4bd82');
+   rc(wx-2,wy-3,1,1,'#d4bd82');rc(wx+1,wy-3,1,1,'#d4bd82');
+   rc(wx-2,wy+2,1,1,'#d4bd82');rc(wx+1,wy+2,1,1,'#d4bd82');
+   // Mostrador claro, circular e minúsculo.
+   rc(wx-1,wy-2,3,5,'#e8dfc6');rc(wx-2,wy-1,5,3,'#e8dfc6');
+   rc(wx-1,wy-1,3,3,'#f4ecd8');
+   // Marcações e ponteiros animados com o horário do jogo.
+   rc(wx,wy-2,1,1,'#514735');rc(wx+1,wy,1,1,'#514735');rc(wx,wy+1,1,1,'#514735');rc(wx-1,wy,1,1,'#514735');
+   var sec=(G.t%60)/60*Math.PI*2-Math.PI/2,min=(G.t%3600)/3600*Math.PI*2-Math.PI/2;
+   g.strokeStyle='#302b23';g.lineWidth=.7;g.beginPath();g.moveTo(wx,wy);g.lineTo(wx+Math.cos(min)*1.4,wy+Math.sin(min)*1.4);g.stroke();
+   g.strokeStyle='#a33';g.lineWidth=.5;g.beginPath();g.moveTo(wx,wy);g.lineTo(wx+Math.cos(sec)*1.8,wy+Math.sin(sec)*1.8);g.stroke();
+   rc(wx,wy,1,1,'#8b3028');
+   g.restore();
+ }
+}
 function hand(x,y){ol(x-5,y-4,11,9,'#e0b090');rc(x-5,y-5,11,2,'#d8d8e0');rc(x-3,y,1,4,'rgba(0,0,0,.2)');rc(x,y,1,4,'rgba(0,0,0,.2)');rc(x+3,y,1,4,'rgba(0,0,0,.2)');rc(x-5,y+3,11,1,'rgba(0,0,0,.15)')}
 function draw(t){
  rc(0,0,320,180,"#05060a");if(mode!=="play"&&mode!=="pause")return;
  var fl=!S.rf&&G.fl>0&&Math.floor(G.fl*14)%2===0,c=G.cur,i,j,r,x,y;
+ var animDt=sleeveAnimT?Math.min(.08,Math.max(0,t-sleeveAnimT)):0;sleeveAnimT=t;var sleeveStep=animDt*3.8;sleeveL+=Math.max(-sleeveStep,Math.min(sleeveStep,sleeveLTarget-sleeveL));sleeveR+=Math.max(-sleeveStep,Math.min(sleeveStep,sleeveRTarget-sleeveR));
  rc(0,0,320,118,"#202638");for(y=10;y<96;y+=9)rc(0,y,320,1,"#1a2030");for(x=0;x<320;x+=18)rc(x,10,1,86,"#1a2030");
  rc(0,0,320,9,"#12151f");rc(0,9,320,1,"#3a4260");rc(0,94,320,2,"#2e3550");rc(0,96,320,22,"#15171f");
  for(i=0;i<21;i++)for(j=0;j<2;j++)rc(i*16+j*8-8,98+j*10,15,9,(i+j)%2?"#262a38":"#1c1f2a");
@@ -613,8 +651,12 @@ function evDone(k){if(!G||G.ev!==k)return 0;var h=$("hE");G.ev=0;G.evOk++;if(k==
 function hot(x,y){if(x>306&&y>29&&y<51)return"pz";if(y<8&&(x>26&&x<74||x>136&&x<184||x>246&&x<294))return"lz";if(x>104&&x<170&&y>=8&&y<18)return"nn";if(x>14&&x<66&&y>82&&y<118)return"tv";if(x>10&&x<98&&y>16&&y<92)return"jn";if(x>234&&x<306&&y>18&&y<96)return"fr";if(x>188&&x<210&&y>104&&y<119)return"ph";if(x>212&&x<240&&y>104&&y<122)return"di";return 0}
 function pt(e){var r=cv.getBoundingClientRect();return hot((e.clientX-r.left)/r.width*320,(e.clientY-r.top)/r.height*180)}
 function act(h){if(h==="di"){showDi();return}if(h==="pz"){showPz();return}if(h==="tv"){if(evDone("tv"))return;G.tvOff=!G.tvOff;snd(300,.05)}else if(h==="ph"){if(evDone("ph"))return;snd(500,.05)}else if(h==="fr"){if(evDone("fr")){G.frO=0;return}G.frO=!G.frO;snd(100,.25,"sawtooth")}else if(h==="jn"){G.win=!G.win;nz(1.3,.25,G.win?500:3800,G.win?4000:400)}else if(h==="lz"){G.lo=!G.lo;snd(1200,.04)}else if(h==="nn"){G.nOff=!G.nOff;snd(800,.05)}}
-cv.addEventListener("click",function(e){if(mode!=="play")return;var h=pt(e);if(h)act(h)});
-cv.addEventListener("mousemove",function(e){cv.style.cursor=mode==="play"&&pt(e)?"pointer":"default"});
+cv.addEventListener("click",function(e){if(mode!=="play")return;var r=cv.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*320,y=(e.clientY-r.top)/r.height*180;
+ // Cada braço alterna separadamente; o relógio existe somente no braço direito.
+ if(y>132&&y<179&&x>65&&x<125){sleeveLTarget=sleeveLTarget>.5?0:1;snd(sleeveLTarget?620:280,.06);return}
+ if(y>132&&y<179&&x>195&&x<260){sleeveRTarget=sleeveRTarget>.5?0:1;snd(sleeveRTarget?620:280,.06);return}
+ var h=hot(x,y);if(h)act(h)});
+cv.addEventListener("mousemove",function(e){var r=cv.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*320,y=(e.clientY-r.top)/r.height*180;cv.style.cursor=mode==="play"&&(pt(e)||(y>132&&y<179&&((x>65&&x<125)||(x>195&&x<260))))?"pointer":"default"});
 C.push({id:"dal",nm:"Seu Dalton",st:1,col:"#7a6a58",sk:"#d9a878",hr:"#666",it:["cafe"],pay:1000,op:"Café preto.",o:[["Já sai.",3,"Obrigado.",3],["Só o café?",3,"Só.",3],["Boa noite.",3,"Boa noite.",3]]});
 var DAL={2:{op:"Boa noite. Café preto, por favor. Você é o Kleber, né? Seu Raimundo falava de você como se já fosse um homem feito.",o:[["O senhor conhecia meu pai?",8,"Conheci gente da estrada. Seu pai era um homem direito.",10],["Só o café?",3,"Só. A noite já é longa sem conversa demais.",3],["Como sabe meu nome?",8,"Pedra Alta é pequena. As notícias chegam antes das pessoas.",12]]},3:{op:"Trouxe lápis de cor pra Bia. Vi na papelaria e lembrei dela.",o:[["Eu não falei o nome dela.",8,"Talvez tenha falado sem perceber.",12],["Ela vai gostar.",6,"Então valeu a pena trazer.",8],["Não precisa trazer presente.",-3,"Tem razão. Desculpa.",-2]]}};
 DAL[4]={op:"Seu pai dirigia até tarde, não era? Dizem que cantava sozinho na cabine, desafinado. Pensar nisso me faz bem e mal ao mesmo tempo.",o:[["O senhor sabia que ele cantava?",8,"Ele me contou uma vez. Disse que a estrada fica menor quando alguém canta junto.",12],["Ele amava dirigir.",5,"Amava mais voltar pra casa. Disso eu tenho certeza.",8],["Não quero falar disso.",3,"Claro. Perdão, Kleber. Eu falo demais quando devia calar.",5]]};
@@ -683,8 +725,20 @@ function csDraw(t){cs.hits=[];var q=$('csI').getContext('2d'),W=320,H=120,_z=1.0
   R(-12,66,12,6,'#111');R(0,66,12,6,'#111');R(-11,66,5,1,'#555');R(1,66,5,1,'#555');R(-12,71,12,1,'#000');R(0,71,12,1,'#000');
   R(-14,17-br,28,27+br,c);R(-14,17-br,2,27,'rgba(255,255,255,.13)');R(8,19,6,25,'rgba(0,0,0,.2)');R(-4,26,1,11,'rgba(0,0,0,.16)');R(3,30,1,9,'rgba(0,0,0,.14)');R(-7,18-br,14,3,'rgba(255,255,255,.14)');R(-14,42,28,3,'#171717');R(-1,42,3,3,'#c9a028');
   if(o.v){R(-14,17-br,6,27,o.v);R(8,17-br,6,27,o.v);R(-9,17-br,1,27,'rgba(0,0,0,.25)');R(8,17-br,1,27,'rgba(0,0,0,.25)');R(-14,29,28,2,'#e4e4e4');R(-14,37,28,2,'#e4e4e4')}
-  var hi=cs.hits.length,up=cs.sv&&cs.sv[hi];cs.hits.push([x-11,y+8,6,17,hi]);if(!up){R(-22,19,10,23,c);R(-22,19,1,23,'rgba(255,255,255,.14)');R(-13,19,1,23,'rgba(0,0,0,.2)');R(-22,40,10,2,'rgba(0,0,0,.28)')}else{R(-22,19,10,11,c);R(-23,28,12,4,c);R(-23,28,12,1,'rgba(255,255,255,.16)');R(-23,31,12,1,'rgba(0,0,0,.32)');R(-21,32,8,10,sk);R(-21,32,8,1,'rgba(0,0,0,.18)')}R(-21,42,8,5,sk);R(-21,46,8,1,'rgba(0,0,0,.16)');R(-20,43,6,1,'rgba(255,255,255,.2)');R(-13,43,2,4,sk);R(-12,44,1,3,'rgba(0,0,0,.14)');R(-21,47,2,4,sk);R(-19,47,2,5,sk);R(-17,47,2,5,sk);R(-15,47,2,3,sk);R(-19,48,1,3,'rgba(0,0,0,.2)');R(-17,48,1,3,'rgba(0,0,0,.2)');R(-21,50,1,1,'rgba(255,225,215,.55)');R(-19,51,1,1,'rgba(255,225,215,.55)');R(-17,51,1,1,'rgba(255,225,215,.55)');if(up){var tm=($('hT')||{}).textContent||'',mt=tm.match(/(\d+):(\d+)/),nw=new Date(),h0=mt?+mt[1]:nw.getHours(),m0=mt?+mt[2]:nw.getMinutes(),s0=nw.getSeconds()+nw.getMilliseconds()/1000,wx=-17,wy=39,ha=((h0%12)+m0/60)/12*6.2832,ma=(m0+s0/60)/60*6.2832,sa=s0/60*6.2832;R(-22,34,10,2,'#2a2420');R(-22,43,10,2,'#2a2420');DOT(wx,wy,5.5,'#b8901c');DOT(wx,wy,4.6,'#f2eee2');R(wx-1,wy-4,2,1,'#222');R(wx-1,wy+3,2,1,'#222');R(wx-4,wy,1,1,'#222');R(wx+3,wy,1,1,'#222');q.lineCap='round';q.strokeStyle='#111';q.lineWidth=1.3;q.beginPath();q.moveTo(wx,wy);q.lineTo(wx+Math.sin(ha)*2.4,wy-Math.cos(ha)*2.4);q.stroke();q.lineWidth=.9;q.beginPath();q.moveTo(wx,wy);q.lineTo(wx+Math.sin(ma)*3.6,wy-Math.cos(ma)*3.6);q.stroke();q.strokeStyle='#d33';q.lineWidth=.5;q.beginPath();q.moveTo(wx,wy);q.lineTo(wx+Math.sin(sa)*3.8,wy-Math.cos(sa)*3.8);q.stroke();DOT(wx,wy,.8,'#111')}
+  var hi=cs.hits.length,up=cs.sv&&cs.sv[hi];cs.hits.push([x-11,y+8,6,17,hi]);if(!up){R(-22,19,10,23,c);R(-22,19,1,23,'rgba(255,255,255,.14)');R(-13,19,1,23,'rgba(0,0,0,.2)');R(-22,40,10,2,'rgba(0,0,0,.28)')}else{R(-22,19,10,11,c);R(-23,28,12,4,c);R(-23,28,12,1,'rgba(255,255,255,.16)');R(-23,31,12,1,'rgba(0,0,0,.32)');R(-21,32,8,10,sk);R(-21,32,8,1,'rgba(0,0,0,.18)')}R(-21,42,8,5,sk);R(-21,46,8,1,'rgba(0,0,0,.16)');R(-20,43,6,1,'rgba(255,255,255,.2)');R(-13,43,2,4,sk);R(-12,44,1,3,'rgba(0,0,0,.14)');R(-21,47,2,4,sk);R(-19,47,2,5,sk);R(-17,47,2,5,sk);R(-15,47,2,3,sk);R(-19,48,1,3,'rgba(0,0,0,.2)');R(-17,48,1,3,'rgba(0,0,0,.2)');R(-21,50,1,1,'rgba(255,225,215,.55)');R(-19,51,1,1,'rgba(255,225,215,.55)');R(-17,51,1,1,'rgba(255,225,215,.55)');
   if(o.up){R(12,2,10,22,c);R(12,22,10,2,'rgba(0,0,0,.25)');R(13,-4,8,7,sk);R(13,2,8,1,'rgba(0,0,0,.16)');R(11,-2,2,4,sk);R(13,-8,2,4,sk);R(15,-10,2,6,sk);R(17,-9,2,5,sk);R(19,-7,2,3,sk);R(15,-9,1,4,'rgba(0,0,0,.18)');R(17,-8,1,4,'rgba(0,0,0,.18)');R(14,-3,6,1,'rgba(255,255,255,.2)')}else{R(12,19,10,23,c);R(21,19,1,23,'rgba(0,0,0,.18)');R(12,40,10,2,'rgba(0,0,0,.25)');R(13,42,8,5,sk);R(13,46,8,1,'rgba(0,0,0,.16)');R(14,43,6,1,'rgba(255,255,255,.2)');R(11,43,2,4,sk);R(12,44,1,3,'rgba(0,0,0,.14)');R(13,47,2,3,sk);R(15,47,2,5,sk);R(17,47,2,5,sk);R(19,47,2,4,sk);R(15,48,1,3,'rgba(0,0,0,.2)');R(17,48,1,3,'rgba(0,0,0,.2)');R(15,51,1,1,'rgba(255,225,215,.55)');R(17,51,1,1,'rgba(255,225,215,.55)');R(19,50,1,1,'rgba(255,225,215,.55)')}
+  // Relógio de pulso: somente no pulso direito (índice ímpar), encaixado entre manga e mão.
+  if(up && hi%2===1){
+   var tm=($('hT')||{}).textContent||'',mt=tm.match(/(\d+):(\d+)/),nw=new Date(),h0=mt?+mt[1]:nw.getHours(),m0=mt?+mt[2]:nw.getMinutes(),s0=nw.getSeconds()+nw.getMilliseconds()/1000,wx=17,wy=41;
+   var ha=((h0%12)+m0/60)/12*6.2832,ma=(m0+s0/60)/60*6.2832,sa=s0/60*6.2832;
+   // Pulseira envolvendo o pulso, com pequenas partes visíveis acima e abaixo do mostrador.
+   R(13,34,8,13,'#24262b');R(14,34,6,13,'#b7a16b');R(15,34,4,13,'#292a30');
+   DOT(wx,wy,5.5,'#292a30');DOT(wx,wy,4.7,'#b9a16b');DOT(wx,wy,3.9,'#eee9d9');
+   for(var wi=0;wi<12;wi++){var wa=wi*Math.PI/6;DOT(wx+Math.sin(wa)*3.15,wy-Math.cos(wa)*3.15,.38,'#34343a')}
+   q.lineCap='round';q.strokeStyle='#25252a';q.lineWidth=1.2;q.beginPath();q.moveTo(wx,wy);q.lineTo(wx+Math.sin(ha)*1.9,wy-Math.cos(ha)*1.9);q.stroke();
+   q.lineWidth=.8;q.beginPath();q.moveTo(wx,wy);q.lineTo(wx+Math.sin(ma)*3,wy-Math.cos(ma)*3);q.stroke();
+   q.strokeStyle='#a63838';q.lineWidth=.45;q.beginPath();q.moveTo(wx,wy);q.lineTo(wx+Math.sin(sa)*3.4,wy-Math.cos(sa)*3.4);q.stroke();DOT(wx,wy,.65,'#24242a');
+  }
   R(-4,13,8,7,sk);R(-4,17,8,3,'rgba(0,0,0,.2)');R(-3,18,6,3,sk);
   R(-10,-2,20,17,sk);R(-9,15,18,2,sk);R(-8,17,16,1,sk);R(-11,6,2,6,sk);R(9,6,2,6,sk);R(-11,8,1,3,'rgba(0,0,0,.18)');R(10,8,1,3,'rgba(0,0,0,.18)');R(6,0,4,16,'rgba(0,0,0,.12)');R(-9,2,3,9,'rgba(255,255,255,.09)');R(-8,11,3,2,'rgba(220,100,90,.28)');R(5,11,3,2,'rgba(220,100,90,.28)');
   if(bl){R(-7,8,5,1,'#222');R(2,8,5,1,'#222')}else{R(-7,6,5,4,'#eee');R(2,6,5,4,'#eee');R(-5,7,3,3,'#111');R(4,7,3,3,'#111');R(-4,7,1,1,'#fff');R(5,7,1,1,'#fff')}
@@ -847,6 +901,108 @@ var drP=0;
 function drShow(){var E=DI(),m=Math.max(0,Math.ceil(E.length/2)-1);drP=Math.min(Math.max(drP,0),m);var f=function(e){return e?"<b>"+e[0].toUpperCase()+"</b><p>"+e[1]+"</p>":"<i>(página em branco)</i>"};$("drL").innerHTML=f(E[drP*2]);$("drR").innerHTML=f(E[drP*2+1])+"<i>"+(drP+1)+"/"+(m+1)+"</i>"}
 function showDi(){drP=999;drShow();$("dr").classList.remove("hide");mode="pz";snd(250,.06)}
 $("drP").onclick=function(){drP--;drShow();snd(300,.04)};$("drN").onclick=function(){drP++;drShow();snd(340,.04)};$("drX").onclick=function(){$("dr").classList.add("hide");mode="play"};
+/* ===== BOTECO / ELISEU (nome provisório: troque BN e o texto "Eliseu") ===== */
+var BN="Eliseu",BR={on:0,talk:0,t0:0,mood:0},JOA="Seu Joaquim: Gol prata, lanterna esquerda quebrada.",MAR="Marlene: o inquilino Dalton tem um Gol prata.";
+function gb(){return S.bar=S.bar||{n:0,dz:0,tr:0,risk:0,lies:0,ref:0,log:[],sh:{},m:{}}}
+function hasC(k){return(S.cl||[]).indexOf(k)>=0}
+function lg(t){gb().log.push(["Boteco · Noite "+S.night,t])}
+function fade(cb){var d=$("bfd");if(!d){d=document.createElement("div");d.id="bfd";d.style.cssText="position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:99999;transition:opacity .55s";document.body.appendChild(d)}d.style.opacity=1;setTimeout(function(){cb();setTimeout(function(){d.style.opacity=0},120)},600)}
+var BS=document.createElement("style");BS.textContent="#pw .who.bw:before{content:'NO BOTECO'}#pw .say.bws{white-space:pre-wrap}#pw .bwg{font-size:9px;letter-spacing:2px;color:#8790aa;margin:9px 0 4px;text-transform:uppercase}#pw .bwr{display:grid;grid-template-columns:1fr 1fr;gap:6px}#pw .bwr.one{grid-template-columns:1fr}#pw .bwr button{margin:0;min-height:34px;padding:7px 10px;text-align:left;background:#252139;border:1px solid #49405f;line-height:1.25}#pw .bwr button.bx{background:#1c1730;color:#a5abc4}";document.head.appendChild(BS);
+function say(t,o){var pw=$("pw");$("reg").innerHTML="";BR.t0=performance.now()/1000;BR.talk=1;if(BR.tm)clearInterval(BR.tm);pw.innerHTML="<div class='who bw'>"+BN+"</div><div class='say bws'></div><div class='bo'></div>";
+var sy=pw.querySelector(".say"),bo=pw.querySelector(".bo"),p=0,gr={q:"Perguntar",s:"Pistas",d:"Sua decisão",x:"Outras opções"},grp=o.some(function(x){return x[2]}),
+build=function(){["q","s","d","x"].forEach(function(k){var L=o.filter(function(x){return(x[2]||"x")===k});if(!L.length)return;if(grp)bo.insertAdjacentHTML("beforeend","<div class='bwg'>"+gr[k]+"</div>");var row=document.createElement("div");row.className="bwr"+(k==="q"&&L.length>1?"":" one");L.forEach(function(x){var b=document.createElement("button");b.textContent=x[0];if(k==="x")b.className="bx";b.onclick=function(){sfx("pop");x[1]()};row.appendChild(b)});bo.appendChild(row)})},
+done=function(){clearInterval(BR.tm);sy.textContent=t;BR.talk=0;if(!bo.firstChild)build()};
+sy.onclick=function(){if(p<t.length)done()};BR.tm=setInterval(function(){p+=2;sy.textContent=t.slice(0,p);if(p>=t.length)done()},22)}
+var SH=[[CG1,"Contar o que o Gerson viu: meu pai discutindo com um homem de chapéu.","“Chapéu... o Gerson enxerga o que dá menos trabalho. Mas a discussão foi real. Guarda isso.”",0,"ger"],[CG2,"Contar que o Gerson recuou e esconde as câmeras do posto.","“Esconde, ou mandaram esconder. Isso muda o peso da coisa, rapaz.”",1,"cam"],[ZV1,"Contar o que o Seu Zé ouviu: freada e farol alto no viaduto.","“O Zé confunde noite. Freada ele não confunde.”",0,"ze"],[JOA,"Contar do Gol prata com a lanterna esquerda quebrada.","Ele fica olhando a tampinha. “Não conta isso pra metade da cidade, entende?”",1,"gol"],[MAR,"Contar que o inquilino da Dona Marlene, o Dalton, tem um Gol prata.","A tampinha para de girar. “Não repete esse nome onde ele possa ouvir. Nem aqui.”",2,"mar"]];
+var EN=[
+{t:"Atrás da conveniência, o boteco da esquina mantém uma única lâmpada acesa. Mesinhas amarelas de plástico, cerveja morna, a rua escura do outro lado do vidro. O homem se acomoda como quem já conhece o lugar.\n\nELISEU: “Senta, rapaz. Não vou te vender nada. Só queria ver quem estava atrás daquele balcão.”",
+q:[{l:"Quem quer saber?",r:"“Alguém que dormiu mal por oito meses. Me chama de Eliseu. Por enquanto serve.”",f:function(B){B.m.alias=1}},{l:"Você conhecia meu pai?",r:"“Dividi café frio com ele em três postos. Sem açúcar, sempre. Dizia que açúcar era pra quem tinha tempo, entende?”"},{l:"O que você sabe sobre a morte dele?",r:"“Que ele não morreu onde dizem. O relatório fala em quilômetro 212. Eu... deixa pra lá. Ainda não.”",f:function(B){B.m.km=1}},{l:"Por que não pega nada na loja?",r:"“Não vim comprar. Vim olhar. Quem compra vai embora cedo.”"}],
+close:function(){return"ELISEU: “Volto outra noite, quando você aprender a esperar.” Uma tampinha de cerveja fica sobre a mesa. “Descobre a que horas seu pai ligou pra casa naquela noite. Depois me diz se bate com o relatório.”\n\nKleber volta com uma pergunta e nenhuma resposta."},
+log:function(B){return"Um homem que se apresentou como Eliseu sabia que eu era filho do Raimundo antes de eu abrir a boca."+(B.m.km?" Disse que o relatório erra o lugar da morte.":"")+" Quer saber a que horas meu pai ligou naquela noite. Ninguém nunca me contou isso."}},
+{t:"ELISEU: “Então? Bateu o horário? Eu sou paciente. A noite não é.”",
+q:[{l:"Ainda não sei a que horas ele ligou.",r:"“Pergunta em casa. A hora conta a história que o papel esconde.”"},{l:"Por que só agora você apareceu?",r:"“Medo é um relógio lento, rapaz. Demora a dar a hora.”"},{l:"O que o relatório não diz?",r:"“O posto da BR fecha a bomba às 23h30. Seu pai parou lá depois disso. O frentista abriu só pra ele. Isso não está em papel nenhum.”",f:function(B){B.m.posto=1}},{l:"Por que eu deveria confiar em você?",r:"“Não deve. Confia no que bater com o resto. Eu trago o que vi. Você compara.”",f:function(B){B.m.cred=1;B.tr++}}],
+close:function(){return"ELISEU: “Anota: o posto, depois das onze e meia. Se alguém disser que seu pai morreu direto na estrada, sem passar em lugar nenhum, está contando outra noite.”"},
+log:function(B){return(B.m.posto?"Segundo o Eliseu, meu pai parou no posto da BR depois das 23h30, e isso não aparece no relatório. ":"Ele não quis dizer mais do que já tinha dito. ")+(B.m.cred?"Perguntei por que confiar nele. Respondeu que não devo: só devo comparar.":"Ainda não sei por que ele demorou tanto.")}},
+{pre:{t:"Pelo vidro do boteco, Kleber vê a conveniência do outro lado da rua. Uma silhueta conhecida para na calçada, de costas para a luz. Seu Dalton olha na direção da mesa amarela.\n\nELISEU: “Não olha agora.”",o:[["Ficar. Ele que olhe.",function(B){B.dz+=2+B.risk;B.m.seenD=1;lg("Dalton parou na calçada e ficou olhando pra mim e pro Eliseu. Não sei se ouviu alguma coisa.")},"“Corajoso. Ou distraído.”",1],["Voltar ao caixa antes que ele entre.",function(B){B.tr--;lg("Voltei ao caixa quando vi o Dalton na calçada. Deixei o Eliseu falando sozinho.")},"“Vai. Eu entendo. Medo a gente reconhece.”",0]]},
+t:"",q:[{l:"Aquele homem... você sabe quem é?",r:"“Sei de gente que olha demais. Não é crime. Ainda.”"},{l:"Você tem medo dele?",r:"“Tenho medo de quanto ele sabe de mim.”",f:function(B){B.m.fear=1}},{l:"O que você viu naquela noite?",r:function(B){return B.tr>=1||B.sh.gol?"“O caminhão do seu pai parado, de pisca-alerta. E um Gol com a lanterna esquerda apagada, logo atrás.”":"“Não aqui. Não com ele olhando. Ganha minha confiança antes.”"},f:function(B){if(B.tr>=1||B.sh.gol)B.m.gol2=1}}],
+close:function(){return"ELISEU: “Se ele perguntar de mim, você me conhece de nada. Ou conta tudo. Você decide quanto vale a minha cabeça.”"},
+log:function(B){return"O Eliseu parece ter medo do Dalton."+(B.m.gol2?" Disse ter visto um Gol com a lanterna esquerda apagada atrás do caminhão do meu pai.":" Não quis falar do que viu enquanto Dalton estava por perto.")}},
+{t:"ELISEU: “O Dalton te disse que só conhecia seu pai ‘de gente da estrada’?” Ele sorri sem vontade. “Os dois fizeram frete juntos, três anos antes.”\n\nNa parede, o relógio marca 23h40. No celular de Kleber, são 02h10.",
+q:[{l:"Como o senhor sabe do frete?",r:"“Eu era o terceiro caminhão do comboio, rapaz. Paguei o jantar daquela viagem.”",f:function(B){B.m.comb=1}},{l:"Então foi o Dalton?",r:function(B){return B.tr>=1?"“Seu pai falou no rádio: ‘o Odair não está sozinho’. Não está sozinho. Quem estava com ele?”":"“Mais de um. É só o que digo. Não conto o resto enquanto você me conta tão pouco.”"},f:function(B){if(B.tr>=1)B.m.two=1;else B.m.half=1}},{l:"O Seu Zé falou de um homem só.",c:function(){return hasC(ZV2)},r:"“Um desceu. O outro não precisava descer.”",f:function(B){B.m.two=1}},{l:"O senhor está escondendo alguma coisa?",r:"Ele demora a responder. “Quem sobrevive a uma noite dessas esconde, rapaz. Pergunta de novo outra hora. Talvez eu tenha coragem.”",f:function(B){B.m.hide=1}}],
+close:function(){return"ELISEU: “Compara. Não acredita em mim, não acredita nele. Acredita no que se repete.”"},
+log:function(B){return"O Eliseu diz que Dalton e meu pai já se conheciam. O Dalton falou em ‘gente da estrada’."+(B.m.two?" No rádio, meu pai teria dito que o Odair não estava sozinho. Quem estava com ele? Não sei em quem confiar: no Dalton, que cala, ou no Eliseu, que só apareceu agora.":" Ele parou antes de explicar o resto. Acho que é porque eu escondi coisas dele.")}},
+{t:"A geladeira de bebidas zumbe no mesmo tom de um rádio fora de sintonia. O relógio da parede está parado em 23h40, mas o ponteiro dos segundos continua andando.\n\nELISEU: “Hoje eu pago o que devo.”",
+q:[{l:"Você estava com ele?",r:function(B){return B.lies>=2||B.tr<0?"“Eu estava na estrada naquela noite. É o que você ganha hoje.”":"“No rádio. Eu era o comboio. Ele pediu pra eu ir até o posto. Eu fiquei aqui.” Ele olha a mesa. “Nesta mesa.”"},f:function(B){if(B.lies>=2||B.tr<0)B.m.part=1;else B.m.radio=1}},{l:"E o que o senhor me contou do posto e da lanterna?",c:function(B){return!(B.lies>=2||B.tr<0)},r:"“Do Gerson. Cheguei às três; a polícia já tinha ido, o colete já estava no chão. O que contei como se tivesse visto, eu ouvi depois.”",f:function(B){B.m.hear=1}},{l:"Por que está me contando agora?",r:"“Porque alguém tá perguntando por mim. E porque você conta o troco igual a ele.”"}],
+close:function(B){return"ELISEU: “Se você me odiar, eu entendo. Mas o Odair não estava sozinho. Isso eu ouvi com os meus ouvidos.”"},
+log:function(B){return B.m.radio?"O Eliseu estava no rádio com meu pai quando tudo aconteceu e ficou sentado no boteco. O que disse do posto e da lanterna era conversa de outros, não coisa que viu. Não sei se isso o torna menos confiável ou só mais humano.":"Ele só admitiu que estava na estrada. Continua escondendo o resto, e foi culpa minha também."}},
+{t:"Na rua, sob o poste, algo parado observa a mesa. Quando Kleber olha de novo, não há nada.\n\nELISEU: “Me procuraram. Duas noites atrás, uma tampinha igual a esta na minha porta. Estão perto.”",
+q:[{l:"Quem procurou o senhor?",r:"“Não vi. Só o carro, parado. Sem a lanterna esquerda.”"},{l:"O senhor vai sumir?",r:"“Se eu sumir de novo, sumo pra sempre.”"}],
+fin:[["Vou com o senhor falar com o Ronaldo.",function(B){B.m.ron2=1;lg("Combinei de levar o Eliseu até o Ronaldo. Ele concordou rápido demais pra quem tinha medo.")},"“Se eu chegar lá inteiro, eu falo tudo.”"],["Some da cidade. Eu cuido do resto.",function(B){B.m.fled=1;lg("Disse pro Eliseu sumir da cidade. Ele aceitou sem discutir. Não sei se fiz o certo.")},"“Obrigado, rapaz. Eu devia ter sumido de outro jeito antes.”"],["Não tenho como te proteger.",function(B){B.m.left=1;lg("Disse que não podia proteger o Eliseu. Ele apertou a tampinha na mão e foi embora sem olhar pra trás.")},"“Eu sei. Seu pai também não podia.”"]],
+log:function(B){return"Última conversa com o Eliseu. Alguém o procurou. Tinha alguém no poste. Pode ter sido só a lâmpada."}}];
+function hub(E,st,txt){var B=gb(),o=[],a=function(l,f,gp){o.push([l,f,gp])},ret=function(m){st.say=m;hub(E,st,m)};
+E.q.forEach(function(q,i){if(st.asked[i]||(q.c&&!q.c(B)))return;a(q.l,function(){st.asked[i]=1;if(q.f)q.f(B);BR.mood=B.m.hide||B.m.fear?1:0;ret("KLEBER: "+q.l+"\n\nELISEU: "+(typeof q.r==="function"?q.r(B):q.r))},"q")});
+SH.filter(function(s){return hasC(s[0])&&!B.sh[s[4]]}).forEach(function(s){if(E.fin)return;a(s[1],function(){B.sh[s[4]]=1;B.tr++;B.risk+=s[3];lg("Contei ao Eliseu: "+s[1].replace(/^Contar (que |o que |do |de )?/,"")+(s[3]>1?" Ele ficou pálido. Talvez eu tenha falado demais.":""));ret("KLEBER: "+s[1]+"\n\nELISEU: "+s[2])},"s")});
+if(!st.lied&&!E.fin)a("Mentir: “Não descobri nada.”",function(){st.lied=1;B.lies++;B.tr--;BR.mood=2;lg("Menti pro Eliseu que não tinha descoberto nada. Ele percebeu.");ret("KLEBER: “Não descobri nada.”\n\nELISEU: Ele inclina a cabeça. “Todo mundo descobre alguma coisa. Quem não conta, guarda.”")},"x");
+if(E.fin)E.fin.forEach(function(f){a(f[0],function(){f[1](B);say("KLEBER: "+f[0]+"\n\nELISEU: "+f[2],[["Levantar da mesa.",function(){endBar()}]])},"d")});else a("Encerrar a conversa.",function(){say(E.close(B),[["Levantar da mesa.",function(){endBar()}]])});
+say((txt||E.t)+"\n\n",o)}
+function startBar(c){var B=gb(),E=EN[Math.min(B.n,5)],st={asked:{}};BR.c=c;BR.mood=0;BR.odd=B.n>=3;BR.fig=B.n>=5;BR.el={id:"eli",nm:BN,col:"#5a5a46",sk:"#c08a5a",hr:"#777",ac:"beard",x:160,ph:"talk",pat:45,mouth:0,idle:0,idleOffset:0};fade(function(){BR.on=1;mode="bar";if(E.pre&&S.night<=7){say(E.pre.t,E.pre.o.map(function(x){return[x[0],function(){x[1](B);if(x[3])hub(E,st,"KLEBER: "+x[0]+"\n\nELISEU: "+x[2]);else say("ELISEU: "+x[2],[["Levantar da mesa.",function(){endBar()}]])}]}))}else hub(E,st,E.t||"")})}
+function endBar(){var B=gb(),E=EN[Math.min(B.n,5)];B.log.push(["Boteco · Noite "+S.night,E.log(B)]);B.n++;save();fade(function(){BR.on=0;if(BR.tm)clearInterval(BR.tm);mode="play";$("reg").innerHTML="";var c=BR.c;if(c&&G&&G.cur===c)leave(c,"ok");ui()})}
+function sitCb(c){c.ph="bar";c.pat=45;setTimeout(function(){startBar(c)},400)}
+function noCb(c){gb().ref++;c.ph="bar";c.pat=45;setTimeout(function(){if(mode==="play"&&G&&G.cur===c)leave(c,"ok")},2200)}
+var OPN=["Você é o filho do Raimundo, não é? Tem o jeito dele de contar o troco, olhando pra cima.","Voltei. Descobriu alguma coisa? Tem uma mesa livre ali no boteco.","Boa noite, rapaz. Posso roubar cinco minutos? Prefiro que seja agora.","Preciso te contar uma coisa sobre aquela noite. Tem uma mesa lá fora.","Hoje eu pago uma dívida. A mesa amarela está livre.","Rapaz... a última mesa. Por favor."];
+C.push({id:"eli",nm:BN,st:1,col:"#5a5a46",sk:"#c08a5a",hr:"#777",it:[],pay:0,op:"Boa noite.",o:[["Boa noite.",3,"Boa noite.",3]]});SV.eli={};
+[2,3,4,6,8,9].forEach(function(n){Object.defineProperty(SV.eli,n,{configurable:true,enumerable:true,get:function(){var B=gb(),k=Math.min(B.n,5);return{it:[],pay:0,op:(B.ref?"Você me deve uma conversa. ":"")+OPN[k],o:[["Sentar e conversar.",5,"“Obrigado, rapaz.”",0,"","",sitCb],["Estou trabalhando. Agora não.",0,"“Entendo. Eu espero.”",0,"","",noCb]]}}})});
+STQ[2].push("eli");STQ[3].push("eli");STQ[4]=["joa","eli","dal"];STQ[6]=["fis","eli","dal"];STQ[8].push("eli");STQ[9]=["pai","eli"];
+var _pk=pick;pick=function(){var q=_pk();if(gb().n>=6)q=q.filter(function(c){return c.id!=="eli"});return q};
+/* Dalton reage */
+var D6=DAL[6];
+Object.defineProperty(DAL,4,{configurable:true,get:function(){var B=gb();if(!B.n)return;return{op:"Café preto. "+(B.m.seenD?"Aquele sujeito que estava falando com você... quem era?":"Vi você conversando com um homem ali no boteco. Conhece ele?"),o:[["Um cliente qualquer.",3,"Cliente qualquer não fica tanto tempo. Mas tudo bem.",3,"","",function(){B.dz+=1;B.lies++;lg("Dalton perguntou do homem do boteco. Menti que era um cliente qualquer.")}],["Disse que conheceu meu pai.",5,"Muita gente diz conhecer quem não pode responder. Cuidado, garoto.",3,"","",function(){B.dz+=2;B.m.toldD=1;lg("Contei ao Dalton que o homem disse conhecer meu pai. Ele ficou quieto por um tempo.")}],["Por que o senhor quer saber?",8,"Curiosidade de quem passa as noites no mesmo balcão.",5,"","",function(){B.dz+=1;lg("Perguntei por que o Dalton queria saber. A resposta foi educada demais.")}]]}}});
+Object.defineProperty(DAL,6,{configurable:true,get:function(){var B=gb(),r=Object.assign({},D6);if(B.dz>=3)r.op="Você anda ocupado com conversa de boteco, Kleber. Cuidado com quem aparece do nada vendendo verdade: quem vende, quer algo. "+r.op;if(B.dz>=5)r.o=r.o.map(function(x){return[x[0],x[1],"Hoje não, garoto.",x[3]]});return r}});
+/* confronto, diário, epílogo */
+var _ask=ask;ask=function(t,o,af){var B=gb();if(/^Dalton está perto da porta/.test(t)&&B.m.two)o=o.concat([["— O senhor não estava sozinho naquela estrada, não é?",function(){S.f=S.f||{};S.f.second=1;cut(["Dalton demora a responder. O sino balança com a corrente de ar.","— Quem foi te contar isso, garoto?\nKleber não responde. Dalton olha pela janela, para o boteco da esquina, e entende mais do que foi dito.","— Eu fui até lá — diz ele, baixo. — Mas não fui o único que desceu daquele carro."],c2)}]]);return _ask(t,o,af)};
+var _DI=DI;DI=function(){var E=_DI(),B=S.bar;if(B&&B.log)B.log.forEach(function(l){E.push([l[0],l[1]])});return E};
+var _card=card;card=function(t,x){var B=S.bar,e="";if(B&&B.n>0&&t!=="LOJA FECHADA"&&t!=="O ÚLTIMO TURNO")e=B.m.ron2?"Eliseu depôs ao lado de Ronaldo. Contou do rádio, do silêncio e da cerveja que terminou. Saiu da delegacia menos curvado.":B.m.fled?"Eliseu sumiu de Pedra Alta antes do fim da semana. Na mesa amarela do boteco, alguém deixou uma tampinha e nenhuma explicação.":B.m.left?"Kleber nunca soube se Eliseu falou com alguém. A mesa amarela do boteco continua vazia, com a lâmpada piscando.":B.n>=6?"A mesa amarela do boteco ficou vazia.":"";return _card(t,e?x+"<br><br><i>"+e+"</i>":x)};
+
+/* cena do boteco: mesmo canvas, mesmas primitivas e mesmo personagem (custN) do balcão */
+var _dr=draw;draw=function(t){if(BR.on)return drawBarMain(t);return _dr(t)};
+function EL(x,y,rx,ry,c){g.fillStyle=c;g.beginPath();g.ellipse(x,y,rx,ry,0,0,7);g.fill()}
+function drawBarMain(t){var B=gb(),i,j,x,y,fk=.85+.1*Math.sin(t*23)+(Math.sin(t*1.3)>.96?-.4:0)+(((t*7)|0)%23===0?-.25:0),br=Math.sin(t*1.6)*.8,gl;
+rc(0,0,320,180,"#05060a");rc(0,0,320,118,"#2a2318");for(y=10;y<96;y+=9)rc(0,y,320,1,"#211b12");for(x=0;x<320;x+=18)rc(x,10,1,86,"#211b12");
+for(i=0;i<14;i++){rc((i*47)%300,14+(i*31)%70,10+(i%3)*5,3,"rgba(90,76,48,.45)");rc(i*23+6,10,1,20+(i*17)%60,"rgba(0,0,0,.22)")}
+rc(0,0,320,9,"#12100a");rc(0,9,320,1,"#4a3f28");rc(0,94,320,2,"#3a3020");rc(0,96,320,22,"#15120d");
+for(i=0;i<21;i++)for(j=0;j<2;j++)rc(i*16+j*8-8,98+j*10,15,9,(i+j)%2?"#241e15":"#1b160f");
+/* abertura para a rua escura */
+ol(10,16,88,76,"#4a4230");gl=g.createLinearGradient(0,20,0,86);gl.addColorStop(0,"#0a1028");gl.addColorStop(1,"#111a35");g.fillStyle=gl;g.fillRect(14,20,80,66);
+for(i=0;i<5;i++){var bh=16+(i*7)%18;rc(14+i*17,72-bh,14,bh,"#0c1222");for(j=0;j<bh/6;j++)if(hsh(i*9+j)>.6)rc(17+i*17,75-bh+j*6,2,2,"#fd8")}
+rc(14,72,80,14,"#10141f");rc(14,72,80,1,"#33405c");ol(28,30,3,42,"#445");rc(24,28,11,3,"#556");g.fillStyle="rgba(255,220,140,"+(.15*fk)+")";g.fillRect(21,28,17,22);
+g.save();g.beginPath();g.rect(14,20,80,66);g.clip();var cyc=(t%13)/13;if(cyc<.8){x=-20+cyc/.8*130;rc(x,77,18,5,"#3a6ea8");rc(x+18,78,3,2,"#ffe9a8");g.fillStyle="rgba(255,230,160,.18)";g.fillRect(x+18,76,26,6)}
+if(B.n>=5||BR.fig){if((t%9)<5){ol(66,38,9,34,"#050508");rc(67,33,7,7,"#050508")}}
+g.fillStyle="#8ab";for(i=0;i<16;i++)g.fillRect(16+(i*37+t*30)%76,22+(i*53+t*60)%60,1,3);
+g.restore();rc(54,20,2,66,"#4a4230");rc(14,52,80,2,"#4a4230");
+/* placa, relógio, geladeira Skol */
+ol(112,22,66,26,"#d8a516");rc(114,24,62,22,"#c4161c");g.font="bold 9px monospace";g.fillStyle="#ffd21e";g.fillText("SKOL",132,35);g.font="5px monospace";g.fillText("CERVEJA GELADA",120,43);
+ol(190,14,22,22,"#d9d2b8");rc(192,16,18,18,"#efe9d2");var ma=BR.odd?-t*.6:4.1,ha=BR.odd?-t*.05+4:5.9;g.strokeStyle="#111";g.lineWidth=1;g.beginPath();g.moveTo(201,25);g.lineTo(201+Math.cos(ma)*7,25+Math.sin(ma)*7);g.moveTo(201,25);g.lineTo(201+Math.cos(ha)*5,25+Math.sin(ha)*5);g.stroke();
+ol(234,18,72,78,"#3a4a58");gl=g.createLinearGradient(0,22,0,92);gl.addColorStop(0,"#1f4a60");gl.addColorStop(1,"#0c2634");g.fillStyle=gl;g.fillRect(238,22,64,70);
+for(i=0;i<3;i++){rc(238,40+i*20,64,2,"#8fb4c4");for(j=0;j<5;j++){var bx=242+j*12;ol(bx,27+i*20,6,12,["#c33","#3a8","#e9c23a","#48c","#c63"][(j+i)%5]);rc(bx+1,25+i*20,4,2,"#ddd")}}
+rc(238,22,3,70,"rgba(255,255,255,.12)");rc(238,22,64,70,"rgba(180,255,235,"+(.05+.04*fk)+")");ol(234,8,72,10,"#c4161c");g.font="bold 7px monospace";g.fillStyle="#ffd21e";g.fillText("SKOL",260,16);
+/* mesinhas ao fundo */
+[[44,108],[268,110]].forEach(function(p){EL(p[0],p[1]+1,15,5,"#07070d");EL(p[0],p[1],14,4,"#a8861a");rc(p[0]-1,p[1]+3,3,9,"#7a6010");ol(p[0]-24,p[1]-5,8,2,"#a8861a");rc(p[0]-22,p[1]-3,2,9,"#7a6010")});
+rc(40,102,4,6,"rgba(200,220,200,.35)");
+/* lâmpada */
+rc(159,0,1,22,"#222");rc(157,22,6,7,"rgba(255,235,170,"+Math.min(1,fk)+")");
+/* Eliseu: mesmo desenho de personagem do balcão */
+var E=BR.el;E.mouth=BR.talk?1:0;E.pat=BR.mood===1?12:45;custN(E,t,0);
+/* mesa de plástico amarela */
+EL(160,166,172,44,"#07070d");EL(160,164,170,42,"#6e5a0e");EL(160,160,170,38,"#c9a31a");EL(150,150,100,15,"rgba(255,235,150,.12)");
+for(i=0;i<10;i++)rc(30+(i*29)%260,135+(i*13)%30,6+(i%3)*4,1,"rgba(90,70,8,.6)");
+EL(160,152,16,5,"#a31218");g.font="bold 6px monospace";g.fillStyle="#ffd21e";g.fillText("SKOL",151,154);
+ol(230,124,8,24,"#2a4a20");ol(232,116,4,9,"#2a4a20");rc(230,134,8,7,"#c4161c");ol(94,134,9,12,"rgba(210,225,205,.4)");rc(95,139,7,6,"#d8a020");rc(95,138,7,1,"#fff");ol(182,128,8,10,"rgba(210,225,205,.4)");rc(183,132,6,5,"#d8a020");ol(262,140,12,4,"#2a2a24");
+rc(204+Math.cos(t*2.4)*5,141+Math.sin(t*2.4),3,2,"#d8d8d0");
+arm(95,118,150+br);hand(118,150+br);arm(225,206,152+br);hand(206,152+br);
+gl=g.createRadialGradient(160,150,5,160,150,140);gl.addColorStop(0,"rgba(255,225,140,"+(.2*fk)+")");gl.addColorStop(1,"rgba(255,225,140,0)");g.fillStyle=gl;g.fillRect(0,100,320,80);
+gl=g.createRadialGradient(160,118,10,160,118,190);gl.addColorStop(0,"rgba(255,180,80,.16)");gl.addColorStop(1,"rgba(5,8,25,.5)");g.fillStyle=gl;g.fillRect(0,0,320,180);
+g.fillStyle="rgba(0,0,0,.07)";for(y=0;y<180;y+=2)g.fillRect(0,y,320,1);finish(t)}
+
 load();rf();toMenu();requestAnimationFrame(loop);
 })();
 </script></body></html>
